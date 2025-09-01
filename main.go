@@ -15,8 +15,10 @@ func main() {
 	// Parse command line flags
 	var debugFlag bool
 	var localFlag bool
+	var yoloFlag bool
 	flag.BoolVar(&debugFlag, "debug", false, "Enable debug logging")
 	flag.BoolVar(&localFlag, "local", false, "Only check for local MCP configurations, skip global ones")
+	flag.BoolVar(&yoloFlag, "yolo", false, "Launch Claude Code with --dangerously-skip-permissions")
 	flag.Parse()
 
 	// Set debug mode in config package
@@ -33,7 +35,7 @@ func main() {
 		// Show styled no-MCP message and launch without MCP
 		launcher.ShowNoMCPMessage()
 
-		err := launcher.LaunchClaudeCodeWithoutMCP()
+		err := launcher.LaunchClaudeCodeWithoutMCP(yoloFlag)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error launching Claude Code: "+err.Error()))
 			os.Exit(1)
@@ -53,7 +55,7 @@ func main() {
 	// Launch Claude Code after Bubble Tea exits (only if user didn't quit)
 	if finalModel, ok := finalModel.(ui.Model); ok && !finalModel.Quitted {
 		launcher.ShowLaunchMessage()
-		err := launcher.LaunchClaudeCode(finalModel.Selected, finalModel.MCPFiles)
+		err := launcher.LaunchClaudeCode(finalModel.Selected, finalModel.MCPFiles, yoloFlag)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error launching Claude Code: "+err.Error()))
 			os.Exit(1)

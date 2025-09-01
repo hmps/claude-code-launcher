@@ -10,14 +10,19 @@ import (
 )
 
 // LaunchClaudeCode launches Claude Code with the specified MCP configuration files
-func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string) error {
+func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool) error {
 	var args []string
+
+	// Add --dangerously-skip-permissions if yolo flag is set
+	if yolo {
+		args = append(args, "--dangerously-skip-permissions")
+	}
 
 	// If "No mcp servers" is selected
 	if _, noMcpSelected := selected[0]; noMcpSelected {
-		args = []string{}
+		// args already contains yolo flag if needed, no need to add anything else
 	} else {
-		args = []string{"--mcp-config"}
+		args = append(args, "--mcp-config")
 
 		// Add all selected MCP files
 		for i := range selected {
@@ -36,8 +41,15 @@ func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string) error {
 }
 
 // LaunchClaudeCodeWithoutMCP launches Claude Code without any MCP servers
-func LaunchClaudeCodeWithoutMCP() error {
-	cmd := exec.Command("claude")
+func LaunchClaudeCodeWithoutMCP(yolo bool) error {
+	var args []string
+
+	// Add --dangerously-skip-permissions if yolo flag is set
+	if yolo {
+		args = append(args, "--dangerously-skip-permissions")
+	}
+
+	cmd := exec.Command("claude", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
