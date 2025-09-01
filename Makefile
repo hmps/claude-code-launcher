@@ -6,5 +6,8 @@ build:
 clean:
 	rm -f cc-launcher
 
+install:
+	go install
+
 run:
 	go run main.go
