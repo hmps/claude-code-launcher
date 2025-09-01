@@ -24,13 +24,13 @@ This is a Go-based launcher utility for Claude Code that provides an interactive
 
 ```bash
 # Build the application
-go build -o claude-launcher
+go build -o cc-launcher
 
 # Run directly
 go run main.go
 
 # Clean build artifacts
-rm claude-launcher
+rm cc-launcher
 ```
 
 ## Usage Flow

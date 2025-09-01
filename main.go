@@ -24,7 +24,16 @@ func initialModel() model {
 
 	for _, file := range mcpFiles {
 		baseName := strings.TrimSuffix(filepath.Base(file), ".json")
-		choices = append(choices, baseName)
+		
+		// Determine if file is from local or global directory
+		var location string
+		if strings.HasPrefix(file, ".claude/mcp/") {
+			location = "local"
+		} else {
+			location = "global"
+		}
+		
+		choices = append(choices, fmt.Sprintf("%s (%s)", baseName, location))
 	}
 
 	selected := make(map[int]struct{})
@@ -40,18 +49,26 @@ func initialModel() model {
 
 func findMCPFiles() []string {
 	var mcpFiles []string
-	mcpDir := ".claude/mcp"
-
-	if _, err := os.Stat(mcpDir); os.IsNotExist(err) {
-		return mcpFiles
+	
+	// Scan local directory (.claude/mcp)
+	localDir := ".claude/mcp"
+	if _, err := os.Stat(localDir); !os.IsNotExist(err) {
+		if files, err := filepath.Glob(filepath.Join(localDir, "*.json")); err == nil {
+			mcpFiles = append(mcpFiles, files...)
+		}
 	}
-
-	files, err := filepath.Glob(filepath.Join(mcpDir, "*.json"))
-	if err != nil {
-		return mcpFiles
+	
+	// Scan global directory (~/.claude/mcp)
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		globalDir := filepath.Join(homeDir, ".claude", "mcp")
+		if _, err := os.Stat(globalDir); !os.IsNotExist(err) {
+			if files, err := filepath.Glob(filepath.Join(globalDir, "*.json")); err == nil {
+				mcpFiles = append(mcpFiles, files...)
+			}
+		}
 	}
-
-	return files
+	
+	return mcpFiles
 }
 
 func (m model) Init() tea.Cmd {
@@ -139,7 +156,7 @@ func main() {
 	m := initialModel()
 
 	if len(m.mcpFiles) == 0 {
-		fmt.Println("No MCP configuration files found in .claude/mcp/")
+		fmt.Println("No MCP configuration files found in .claude/mcp/ or ~/.claude/mcp/")
 		fmt.Println("Launching Claude Code without MCP servers...")
 
 		cmd := exec.Command("claude")

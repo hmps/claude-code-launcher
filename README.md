@@ -30,7 +30,7 @@ cd claude-code-launcher
 # Install the binary to $GOPATH/bin
 go install
 
-# The command 'claude-launcher' should now be available globally
+# The command 'cc-launcher' should now be available globally
 ```
 
 Make sure `$(go env GOPATH)/bin` is in your PATH. You can verify this with:
@@ -50,7 +50,7 @@ export PATH="$PATH:$(go env GOPATH)/bin"
 Simply run the launcher from any directory:
 
 ```bash
-claude-launcher
+cc-launcher
 ```
 
 ### Workflow
@@ -66,7 +66,7 @@ claude-launcher
 ### Example
 
 ```bash
-$ claude-launcher
+$ cc-launcher
 
 Select MCP configurations to launch:
   [ ] taskmaster.json
@@ -96,11 +96,19 @@ Example structure:
 
 ```bash
 # Build the binary
-go build -o claude-launcher
+make build
 
-# Run directly without installing
-go run main.go
+# Run directly without building
+make run
+
+# Clean build artifacts
+make clean
 ```
+
+Available make targets:
+- `make build` - Build the application binary (`cc-launcher`)
+- `make clean` - Remove build artifacts
+- `make run` - Run the application directly without building
 
 ### Dependencies
 
