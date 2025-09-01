@@ -8,6 +8,101 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// createGradientText creates a gradient effect for text
+func createGradientText(text string, startColor, endColor lipgloss.Color) string {
+	// Create a gradient effect by alternating between colors
+	// Split the text and apply different background colors to create gradient illusion
+	textRunes := []rune(text)
+	if len(textRunes) == 0 {
+		return ""
+	}
+
+	// For a visual gradient effect, we'll create segments with different shades
+	var result strings.Builder
+
+	// Create base style
+	baseStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#FFFFFF")).
+		Bold(true)
+
+	// Split text into chunks and alternate colors to simulate gradient
+	for i, r := range textRunes {
+		var bgColor lipgloss.Color
+		if i < len(textRunes)/2 {
+			bgColor = startColor
+		} else {
+			bgColor = endColor
+		}
+
+		charStyle := baseStyle.Background(bgColor)
+		result.WriteString(charStyle.Render(string(r)))
+	}
+
+	// Add padding around the entire gradient
+	finalStyle := lipgloss.NewStyle().Padding(1, 2)
+	return finalStyle.Render(result.String())
+}
+
+var (
+	// Color palette
+	primaryColor        = lipgloss.Color("#FF6B9D")
+	secondaryColor      = lipgloss.Color("#4ECDC4")
+	accentColor         = lipgloss.Color("#45B7D1")
+	successColor        = lipgloss.Color("#96CEB4")
+	mutedColor          = lipgloss.Color("#6C7B7F")
+	purpleGradientStart = lipgloss.Color("#8B5CF6")
+	purpleGradientEnd   = lipgloss.Color("#A855F7")
+	textColor           = lipgloss.Color("#ECF0F1")
+
+	// Title styles with gradient effect
+	titleStyle = lipgloss.NewStyle().
+			Foreground(primaryColor).
+			Bold(true).
+			Padding(1, 2)
+
+	headerStyle = lipgloss.NewStyle().
+			Foreground(textColor).
+			Bold(true).
+			Padding(0, 1).
+			MarginBottom(1)
+
+	// Item styles
+	selectedItemStyle = lipgloss.NewStyle().
+				Foreground(primaryColor).
+				Bold(true).
+				Padding(0, 1)
+
+	unselectedItemStyle = lipgloss.NewStyle().
+				Foreground(textColor).
+				Padding(0, 1)
+
+	cursorStyle = lipgloss.NewStyle().
+			Foreground(accentColor).
+			Bold(true)
+
+	checkboxSelectedStyle = lipgloss.NewStyle().
+				Foreground(successColor).
+				Bold(true)
+
+	checkboxUnselectedStyle = lipgloss.NewStyle().
+				Foreground(mutedColor)
+
+	locationStyle = lipgloss.NewStyle().
+			Foreground(secondaryColor).
+			Italic(true)
+
+	helpStyle = lipgloss.NewStyle().
+			Foreground(mutedColor).
+			Italic(true).
+			MarginTop(1)
+
+	launchStyle = lipgloss.NewStyle().
+			Foreground(successColor).
+			Bold(true).
+			Padding(0, 1)
 )
 
 type model struct {
@@ -16,6 +111,7 @@ type model struct {
 	selected    map[int]struct{}
 	mcpFiles    []string
 	multiSelect bool
+	quitted     bool
 }
 
 func initialModel() model {
@@ -24,7 +120,7 @@ func initialModel() model {
 
 	for _, file := range mcpFiles {
 		baseName := strings.TrimSuffix(filepath.Base(file), ".json")
-		
+
 		// Determine if file is from local or global directory
 		var location string
 		if strings.HasPrefix(file, ".claude/mcp/") {
@@ -32,7 +128,7 @@ func initialModel() model {
 		} else {
 			location = "global"
 		}
-		
+
 		choices = append(choices, fmt.Sprintf("%s (%s)", baseName, location))
 	}
 
@@ -49,7 +145,7 @@ func initialModel() model {
 
 func findMCPFiles() []string {
 	var mcpFiles []string
-	
+
 	// Scan local directory (.claude/mcp)
 	localDir := ".claude/mcp"
 	if _, err := os.Stat(localDir); !os.IsNotExist(err) {
@@ -57,7 +153,7 @@ func findMCPFiles() []string {
 			mcpFiles = append(mcpFiles, files...)
 		}
 	}
-	
+
 	// Scan global directory (~/.claude/mcp)
 	if homeDir, err := os.UserHomeDir(); err == nil {
 		globalDir := filepath.Join(homeDir, ".claude", "mcp")
@@ -67,7 +163,7 @@ func findMCPFiles() []string {
 			}
 		}
 	}
-	
+
 	return mcpFiles
 }
 
@@ -80,6 +176,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
+			m.quitted = true
 			return m, tea.Quit
 
 		case "up", "k":
@@ -125,39 +222,109 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	s := "Choose Claude Code launch configuration:\n\n"
+	var s strings.Builder
 
+	// Title with gradient
+	title := createGradientText("⚡ Claude Code Launcher", purpleGradientStart, purpleGradientEnd)
+	s.WriteString(title + "\n\n")
+
+	// Header
+	header := headerStyle.Render("🚀 Choose your MCP configuration:")
+	s.WriteString(header + "\n")
+
+	// Menu items
 	for i, choice := range m.choices {
-		cursor := " "
+		var cursor, checkbox, item string
+
+		// Cursor
 		if m.cursor == i {
-			cursor = ">"
-		}
-
-		checkbox := " "
-		if _, ok := m.selected[i]; ok {
-			checkbox = "✓"
+			cursor = cursorStyle.Render("❯")
 		} else {
-			checkbox = "○"
+			cursor = " "
 		}
 
-		s += fmt.Sprintf("%s %s %s\n", cursor, checkbox, choice)
+		// Checkbox
+		if _, ok := m.selected[i]; ok {
+			checkbox = checkboxSelectedStyle.Render("⬢")
+		} else {
+			checkbox = checkboxUnselectedStyle.Render("⬡")
+		}
+
+		// Item styling
+		if m.cursor == i {
+			// Special handling for different choice types
+			if i == 0 {
+				// "No mcp servers" option
+				item = selectedItemStyle.Render("🚫 " + choice)
+			} else {
+				// Parse choice to separate name and location
+				parts := strings.Split(choice, " (")
+				name := parts[0]
+				location := ""
+				if len(parts) > 1 {
+					location = " (" + parts[1]
+				}
+
+				styledName := selectedItemStyle.Render(name)
+				styledLocation := locationStyle.Render(location)
+				item = styledName + styledLocation
+			}
+		} else {
+			// Unselected item
+			if i == 0 {
+				item = unselectedItemStyle.Render("🚫 " + choice)
+			} else {
+				parts := strings.Split(choice, " (")
+				name := parts[0]
+				location := ""
+				if len(parts) > 1 {
+					location = " (" + parts[1]
+				}
+
+				styledName := unselectedItemStyle.Render(name)
+				styledLocation := locationStyle.Render(location)
+				item = styledName + styledLocation
+			}
+		}
+
+		s.WriteString(fmt.Sprintf(" %s %s %s\n", cursor, checkbox, item))
 	}
 
-	helpText := "\nPress enter to launch, q to quit"
+	// Help text
+	helpText := "💡 Controls: "
 	if m.multiSelect {
-		helpText += ", space to select/deselect"
+		helpText += "↑/↓ navigate • space select • enter launch • q quit"
+	} else {
+		helpText += "↑/↓ navigate • enter launch • q quit"
 	}
-	s += helpText + ".\n"
 
-	return s
+	help := helpStyle.Render(helpText)
+	s.WriteString("\n" + help + "\n")
+
+	return s.String()
 }
 
 func main() {
 	m := initialModel()
 
 	if len(m.mcpFiles) == 0 {
-		fmt.Println("No MCP configuration files found in .claude/mcp/ or ~/.claude/mcp/")
-		fmt.Println("Launching Claude Code without MCP servers...")
+		// Styled no-MCP message
+		title := createGradientText("⚡ Claude Code Launcher", purpleGradientStart, purpleGradientEnd)
+		noMcpStyle := lipgloss.NewStyle().
+			Foreground(mutedColor).
+			Italic(true).
+			Padding(1, 2).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(mutedColor)
+
+		launchMsg := createGradientText("🚀 Launching Claude Code without MCP servers...", purpleGradientStart, purpleGradientEnd)
+
+		fmt.Println(title)
+		fmt.Println()
+		fmt.Println(noMcpStyle.Render("📁 No MCP configuration files found in .claude/mcp/ or ~/.claude/mcp/"))
+		fmt.Println()
+		fmt.Println(launchMsg)
+		fmt.Println()
 
 		cmd := exec.Command("claude")
 		cmd.Stdout = os.Stdout
@@ -166,7 +333,13 @@ func main() {
 
 		err := cmd.Run()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error launching Claude Code: %v\n", err)
+			errorStyle := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#E74C3C")).
+				Bold(true).
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#E74C3C")).
+				Padding(0, 1)
+			fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Render("❌ Error launching Claude Code: "+err.Error()))
 			os.Exit(1)
 		}
 		return
@@ -175,13 +348,22 @@ func main() {
 	p := tea.NewProgram(m)
 	finalModel, err := p.Run()
 	if err != nil {
-		fmt.Printf("Error running program: %v", err)
+		errorStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#E74C3C")).
+			Bold(true).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#E74C3C")).
+			Padding(0, 1)
+		fmt.Printf("%s\n", errorStyle.Render("❌ Error running program: "+err.Error()))
 		os.Exit(1)
 	}
 
-	// Launch Claude Code after Bubble Tea exits
-	if finalModel, ok := finalModel.(model); ok {
-		fmt.Print("🚀 Launching Claude Code...\n\n")
+	// Launch Claude Code after Bubble Tea exits (only if user didn't quit)
+	if finalModel, ok := finalModel.(model); ok && !finalModel.quitted {
+		launchMsg := createGradientText("🚀 Launching Claude Code...", purpleGradientStart, purpleGradientEnd)
+		fmt.Println()
+		fmt.Println(launchMsg)
+		fmt.Println()
 		launchClaudeCodeFromSelection(finalModel.selected, finalModel.mcpFiles)
 	}
 }
@@ -210,7 +392,13 @@ func launchClaudeCodeFromSelection(selected map[int]struct{}, mcpFiles []string)
 
 	err := cmd.Run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error launching Claude Code: %v\n", err)
+		errorStyle := lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#E74C3C")).
+			Bold(true).
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#E74C3C")).
+			Padding(0, 1)
+		fmt.Fprintf(os.Stderr, "%s\n", errorStyle.Render("❌ Error launching Claude Code: "+err.Error()))
 		os.Exit(1)
 	}
 }
