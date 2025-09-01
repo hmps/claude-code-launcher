@@ -14,14 +14,15 @@ func SetDebugMode(enabled bool) {
 	debugMode = enabled
 }
 
-// FindMCPFiles discovers MCP configuration files in both local and global directories.
+// FindMCPFiles discovers MCP configuration files in local and optionally global directories.
 // It returns a slice of file paths to *.json files found in:
 // - .claude/mcp/ (local directory)
-// - ~/.claude/mcp/ (global directory)
+// - ~/.claude/mcp/ (global directory, unless localOnly is true)
 //
+// If localOnly is true, only the local directory is scanned.
 // Returns an error if there are issues accessing the user's home directory
 // or if glob operations fail unexpectedly.
-func FindMCPFiles() ([]string, error) {
+func FindMCPFiles(localOnly bool) ([]string, error) {
 	var mcpFiles []string
 
 	// Scan local directory (.claude/mcp)
@@ -32,18 +33,20 @@ func FindMCPFiles() ([]string, error) {
 	}
 	mcpFiles = append(mcpFiles, files...)
 
-	// Scan global directory (~/.claude/mcp)
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user home directory: %w", err)
-	}
+	// Scan global directory (~/.claude/mcp) unless localOnly is true
+	if !localOnly {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		}
 
-	globalDir := filepath.Join(homeDir, ".claude", "mcp")
-	files, err = scanMCPDirectory(globalDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to scan global MCP directory %s: %w", globalDir, err)
+		globalDir := filepath.Join(homeDir, ".claude", "mcp")
+		files, err = scanMCPDirectory(globalDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan global MCP directory %s: %w", globalDir, err)
+		}
+		mcpFiles = append(mcpFiles, files...)
 	}
-	mcpFiles = append(mcpFiles, files...)
 
 	return mcpFiles, nil
 }

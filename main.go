@@ -14,14 +14,16 @@ import (
 func main() {
 	// Parse command line flags
 	var debugFlag bool
+	var localFlag bool
 	flag.BoolVar(&debugFlag, "debug", false, "Enable debug logging")
+	flag.BoolVar(&localFlag, "local", false, "Only check for local MCP configurations, skip global ones")
 	flag.Parse()
 
 	// Set debug mode in config package
 	config.SetDebugMode(debugFlag)
 
 	// Find MCP files
-	mcpFiles, err := config.FindMCPFiles()
+	mcpFiles, err := config.FindMCPFiles(localFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error finding MCP files: "+err.Error()))
 		os.Exit(1)
