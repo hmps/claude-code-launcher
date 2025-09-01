@@ -47,3 +47,4 @@ rm cc-launcher
 - `github.com/charmbracelet/bubbles`: UI components
 - `github.com/charmbracelet/lipgloss`: Styling library
 - Standard Go libraries: `os`, `exec`, `path/filepath`, `strings`
+- Don't try to run the tool yourself. It will not work well. Instead, ask the user to launch it.
