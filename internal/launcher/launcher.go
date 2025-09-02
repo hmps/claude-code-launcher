@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"syscall"
 
 	"cc-launcher/internal/ui"
 	"github.com/charmbracelet/lipgloss"
@@ -11,7 +12,14 @@ import (
 
 // LaunchClaudeCode launches Claude Code with the specified MCP configuration files
 func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool) error {
-	var args []string
+	// Find the full path to claude executable
+	claudePath, err := exec.LookPath("claude")
+	if err != nil {
+		return fmt.Errorf("claude executable not found: %w", err)
+	}
+
+	// Build arguments array
+	args := []string{"claude"}
 
 	// Add --dangerously-skip-permissions if yolo flag is set
 	if yolo {
@@ -32,29 +40,28 @@ func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool) e
 		}
 	}
 
-	cmd := exec.Command("claude", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	return cmd.Run()
+	// Use syscall.Exec to replace current process with Claude Code
+	return syscall.Exec(claudePath, args, os.Environ())
 }
 
 // LaunchClaudeCodeWithoutMCP launches Claude Code without any MCP servers
 func LaunchClaudeCodeWithoutMCP(yolo bool) error {
-	var args []string
+	// Find the full path to claude executable
+	claudePath, err := exec.LookPath("claude")
+	if err != nil {
+		return fmt.Errorf("claude executable not found: %w", err)
+	}
+
+	// Build arguments array
+	args := []string{"claude"}
 
 	// Add --dangerously-skip-permissions if yolo flag is set
 	if yolo {
 		args = append(args, "--dangerously-skip-permissions")
 	}
 
-	cmd := exec.Command("claude", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	return cmd.Run()
+	// Use syscall.Exec to replace current process with Claude Code
+	return syscall.Exec(claudePath, args, os.Environ())
 }
 
 // ShowNoMCPMessage displays a styled message when no MCP files are found

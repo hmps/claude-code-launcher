@@ -13,10 +13,17 @@ Claude Code Launcher is a Go-based TUI (Terminal User Interface) application tha
 - ⚡ **Smart Defaults**: Launches Claude Code directly if no MCP configurations are found
 - 🎨 **Beautiful Interface**: Built with Bubble Tea for a smooth terminal experience
 
+## Platform Support
+
+**This tool currently supports macOS only.** 
+
+The launcher uses Unix system calls (`syscall.Exec`) to completely replace the launcher process with Claude Code, ensuring clean process management and proper terminal handling. This approach prevents issues with process suspension (Ctrl+C) and provides the smoothest user experience, but is not available on Windows.
+
 ## Installation
 
 ### Prerequisites
 
+- **macOS** (required)
 - Go 1.18 or higher
 - Claude Code CLI installed (`claude` command available)
 
