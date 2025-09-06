@@ -20,14 +20,16 @@ func main() {
 	var resumeFlag bool
 	var continueFlag bool
 	var blankFlag bool
+	var configFlag bool
 	flag.BoolVar(&debugFlag, "debug", false, "Enable debug logging")
 	flag.BoolVar(&localFlag, "local", false, "Only check for local MCP configurations, skip global ones")
 	flag.BoolVar(&yoloFlag, "yolo", false, "Launch Claude Code with --dangerously-skip-permissions")
 	flag.BoolVar(&happyFlag, "happy", false, "Use happy instead of claude command")
 	flag.BoolVar(&resumeFlag, "r", false, "Launch Claude Code with --resume flag (-r, --resume)")
 	flag.BoolVar(&resumeFlag, "resume", false, "Launch Claude Code with --resume flag (-r, --resume)")
-	flag.BoolVar(&continueFlag, "c", false, "Launch Claude Code with --continue flag (-c, --continue)")
-	flag.BoolVar(&continueFlag, "continue", false, "Launch Claude Code with --continue flag (-c, --continue)")
+	flag.BoolVar(&continueFlag, "continue", false, "Launch Claude Code with --continue flag (--continue)")
+	flag.BoolVar(&configFlag, "c", false, "Always show TUI config interface (overrides other flags) (-c, --config)")
+	flag.BoolVar(&configFlag, "config", false, "Always show TUI config interface (overrides other flags) (-c, --config)")
 	flag.BoolVar(&blankFlag, "b", false, "Launch Claude Code without MCP servers (skip TUI) (-b, --blank)")
 	flag.BoolVar(&blankFlag, "blank", false, "Launch Claude Code without MCP servers (skip TUI) (-b, --blank)")
 	
@@ -35,7 +37,8 @@ func main() {
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(flag.CommandLine.Output(), "  -b, --blank\n        Launch Claude Code without MCP servers (skip TUI)\n")
-		fmt.Fprintf(flag.CommandLine.Output(), "  -c, --continue\n        Launch Claude Code with --continue flag\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  -c, --config\n        Always show TUI config interface (overrides other flags)\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  --continue\n        Launch Claude Code with --continue flag\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --debug\n        Enable debug logging\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --happy\n        Use happy instead of claude command\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --local\n        Only check for local MCP configurations, skip global ones\n")
@@ -48,11 +51,11 @@ func main() {
 	// Set debug mode in config package
 	config.SetDebugMode(debugFlag)
 
-	// Check if any flags were provided
+	// Check if any flags were provided (excluding configFlag which forces TUI)
 	anyFlagProvided := debugFlag || localFlag || yoloFlag || happyFlag || resumeFlag || continueFlag || blankFlag
 	
-	// If any flag is provided, bypass TUI and launch directly with defaults
-	if anyFlagProvided {
+	// If any flag is provided but config flag is NOT set, bypass TUI and launch directly with defaults
+	if anyFlagProvided && !configFlag {
 		// Apply default values: blank=true (skip TUI), all others keep their parsed values (defaulting to false)
 		err := launcher.LaunchClaudeCodeWithoutMCP(yoloFlag, happyFlag, resumeFlag, continueFlag)
 		if err != nil {
@@ -69,7 +72,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if len(mcpFiles) == 0 {
+	// If config flag is set, always show TUI even with no MCP files
+	if configFlag && len(mcpFiles) == 0 {
+		// Create empty MCP files list to force TUI
+		mcpFiles = []string{}
+	}
+
+	if len(mcpFiles) == 0 && !configFlag {
 		// Show styled no-MCP message and launch without MCP
 		launcher.ShowNoMCPMessage(happyFlag)
 
@@ -82,7 +91,8 @@ func main() {
 	}
 
 	// Create UI model and run Bubble Tea program
-	m := ui.NewModel(mcpFiles, happyFlag)
+	// Pass command line flags as defaults when config flag is used
+	m := ui.NewModelWithDefaults(mcpFiles, happyFlag, yoloFlag, continueFlag, resumeFlag, blankFlag)
 	p := tea.NewProgram(m)
 	finalModel, err := p.Run()
 	if err != nil {

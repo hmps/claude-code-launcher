@@ -28,6 +28,10 @@ type Model struct {
 }
 
 func NewModel(mcpFiles []string, happy bool) Model {
+	return NewModelWithDefaults(mcpFiles, happy, false, false, false, false)
+}
+
+func NewModelWithDefaults(mcpFiles []string, happy bool, yoloFlag bool, continueFlag bool, resumeFlag bool, blankFlag bool) Model {
 	choices := []string{"No mcp servers"}
 
 	for _, file := range mcpFiles {
@@ -45,7 +49,13 @@ func NewModel(mcpFiles []string, happy bool) Model {
 	}
 
 	selected := make(map[int]struct{})
-	selected[0] = struct{}{} // Pre-select "No mcp servers"
+	if blankFlag {
+		// If blank flag is set, pre-select "No mcp servers"
+		selected[0] = struct{}{}
+	} else {
+		// Default behavior - pre-select "No mcp servers"
+		selected[0] = struct{}{}
+	}
 
 	return Model{
 		Choices:     choices,
@@ -53,11 +63,11 @@ func NewModel(mcpFiles []string, happy bool) Model {
 		MCPFiles:    mcpFiles,
 		MultiSelect: len(mcpFiles) > 1,
 		Happy:       happy,
-		// Initialize flags to false by default
-		HappyFlag:    false,
-		ContinueFlag: false,
-		ResumeFlag:   false,
-		YoloFlag:     false,
+		// Initialize flags with command line defaults
+		HappyFlag:    happy, // Use the happy parameter passed from command line
+		ContinueFlag: continueFlag,
+		ResumeFlag:   resumeFlag,
+		YoloFlag:     yoloFlag,
 		// Start with showing MCP selection
 		ShowingMCPSelection: true,
 		FlagCursor:          0,
