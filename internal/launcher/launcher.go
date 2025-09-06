@@ -11,7 +11,7 @@ import (
 )
 
 // LaunchClaudeCode launches Claude Code with the specified MCP configuration files
-func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, happy bool, resume bool) error {
+func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, happy bool, resume bool, continueFlag bool) error {
 	var executablePath, executableName string
 	
 	// Check if happy flag is set and happy is available
@@ -51,6 +51,11 @@ func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, h
 	// Add --resume if resume flag is set
 	if resume {
 		args = append(args, "--resume")
+	}
+
+	// Add --continue if continue flag is set
+	if continueFlag {
+		args = append(args, "--continue")
 	}
 
 	// If "No mcp servers" is selected
@@ -72,7 +77,7 @@ func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, h
 }
 
 // LaunchClaudeCodeWithoutMCP launches Claude Code without any MCP servers
-func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool, resume bool) error {
+func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool, resume bool, continueFlag bool) error {
 	var executablePath, executableName string
 	
 	// Check if happy flag is set and happy is available
@@ -112,6 +117,11 @@ func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool, resume bool) error {
 	// Add --resume if resume flag is set
 	if resume {
 		args = append(args, "--resume")
+	}
+
+	// Add --continue if continue flag is set
+	if continueFlag {
+		args = append(args, "--continue")
 	}
 
 	// Use syscall.Exec to replace current process with Claude Code

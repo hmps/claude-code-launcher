@@ -18,16 +18,20 @@ func main() {
 	var yoloFlag bool
 	var happyFlag bool
 	var resumeFlag bool
+	var continueFlag bool
 	flag.BoolVar(&debugFlag, "debug", false, "Enable debug logging")
 	flag.BoolVar(&localFlag, "local", false, "Only check for local MCP configurations, skip global ones")
 	flag.BoolVar(&yoloFlag, "yolo", false, "Launch Claude Code with --dangerously-skip-permissions")
 	flag.BoolVar(&happyFlag, "happy", false, "Use happy instead of claude command")
 	flag.BoolVar(&resumeFlag, "r", false, "Launch Claude Code with --resume flag (-r, --resume)")
 	flag.BoolVar(&resumeFlag, "resume", false, "Launch Claude Code with --resume flag (-r, --resume)")
+	flag.BoolVar(&continueFlag, "c", false, "Launch Claude Code with --continue flag (-c, --continue)")
+	flag.BoolVar(&continueFlag, "continue", false, "Launch Claude Code with --continue flag (-c, --continue)")
 	
-	// Custom usage function to show double dashes for all flags except -r
+	// Custom usage function to show double dashes for all flags except -r and -c
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "  -c, --continue\n        Launch Claude Code with --continue flag\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --debug\n        Enable debug logging\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --happy\n        Use happy instead of claude command\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --local\n        Only check for local MCP configurations, skip global ones\n")
@@ -51,7 +55,7 @@ func main() {
 		// Show styled no-MCP message and launch without MCP
 		launcher.ShowNoMCPMessage(happyFlag)
 
-		err := launcher.LaunchClaudeCodeWithoutMCP(yoloFlag, happyFlag, resumeFlag)
+		err := launcher.LaunchClaudeCodeWithoutMCP(yoloFlag, happyFlag, resumeFlag, continueFlag)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error launching Claude Code: "+err.Error()))
 			os.Exit(1)
@@ -71,7 +75,7 @@ func main() {
 	// Launch Claude Code after Bubble Tea exits (only if user didn't quit)
 	if finalModel, ok := finalModel.(ui.Model); ok && !finalModel.Quitted {
 		launcher.ShowLaunchMessage(happyFlag)
-		err := launcher.LaunchClaudeCode(finalModel.Selected, finalModel.MCPFiles, yoloFlag, happyFlag, resumeFlag)
+		err := launcher.LaunchClaudeCode(finalModel.Selected, finalModel.MCPFiles, yoloFlag, happyFlag, resumeFlag, continueFlag)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error launching Claude Code: "+err.Error()))
 			os.Exit(1)
