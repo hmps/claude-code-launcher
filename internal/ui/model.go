@@ -89,10 +89,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ShowingMCPSelection {
 				if m.Cursor > 0 {
 					m.Cursor--
+				} else {
+					// At first item in MCP section, move to last item in config section
+					m.ShowingMCPSelection = false
+					m.FlagCursor = 3 // Last flag (yolo)
 				}
 			} else {
 				if m.FlagCursor > 0 {
 					m.FlagCursor--
+				} else {
+					// At first item in config section, move to last item in MCP section
+					m.ShowingMCPSelection = true
+					m.Cursor = len(m.Choices) - 1
 				}
 			}
 
@@ -100,10 +108,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.ShowingMCPSelection {
 				if m.Cursor < len(m.Choices)-1 {
 					m.Cursor++
+				} else {
+					// At last item in MCP section, move to first item in config section
+					m.ShowingMCPSelection = false
+					m.FlagCursor = 0
 				}
 			} else {
 				if m.FlagCursor < 3 { // 4 flags total (0-3)
 					m.FlagCursor++
+				} else {
+					// At last item in config section, move to first item in MCP section
+					m.ShowingMCPSelection = true
+					m.Cursor = 0
 				}
 			}
 
