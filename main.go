@@ -24,6 +24,17 @@ func main() {
 	flag.BoolVar(&happyFlag, "happy", false, "Use happy instead of claude command")
 	flag.BoolVar(&resumeFlag, "r", false, "Launch Claude Code with --resume flag (-r, --resume)")
 	flag.BoolVar(&resumeFlag, "resume", false, "Launch Claude Code with --resume flag (-r, --resume)")
+	
+	// Custom usage function to show double dashes for all flags except -r
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "  --debug\n        Enable debug logging\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  --happy\n        Use happy instead of claude command\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  --local\n        Only check for local MCP configurations, skip global ones\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  -r, --resume\n        Launch Claude Code with --resume flag\n")
+		fmt.Fprintf(flag.CommandLine.Output(), "  --yolo\n        Launch Claude Code with --dangerously-skip-permissions\n")
+	}
+	
 	flag.Parse()
 
 	// Set debug mode in config package
