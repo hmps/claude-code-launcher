@@ -62,7 +62,7 @@ func main() {
 		return
 	}
 
-	// Find MCP files
+	// Find MCP files (command line flag takes precedence over TUI setting)
 	mcpFiles, err := config.FindMCPFiles(localFlag)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error finding MCP files: "+err.Error()))
@@ -92,8 +92,21 @@ func main() {
 
 	// Launch Claude Code after Bubble Tea exits (only if user didn't quit)
 	if finalModel, ok := finalModel.(ui.Model); ok && !finalModel.Quitted {
-		launcher.ShowLaunchMessage(happyFlag)
-		err := launcher.LaunchClaudeCode(finalModel.Selected, finalModel.MCPFiles, yoloFlag, happyFlag, resumeFlag, continueFlag)
+		// Use flags from TUI model, prioritizing resume over continue as specified
+		effectiveResumeFlag := finalModel.ResumeFlag
+		effectiveContinueFlag := finalModel.ContinueFlag
+		if finalModel.ResumeFlag && finalModel.ContinueFlag {
+			effectiveContinueFlag = false // resume takes priority
+		}
+
+		launcher.ShowLaunchMessage(finalModel.HappyFlag || happyFlag)
+		err := launcher.LaunchClaudeCode(
+			finalModel.Selected, 
+			finalModel.MCPFiles, 
+			finalModel.YoloFlag, 
+			finalModel.HappyFlag || happyFlag, 
+			effectiveResumeFlag, 
+			effectiveContinueFlag)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error launching Claude Code: "+err.Error()))
 			os.Exit(1)

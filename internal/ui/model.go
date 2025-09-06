@@ -17,6 +17,14 @@ type Model struct {
 	MultiSelect bool
 	Quitted     bool
 	Happy       bool
+	// Flag states
+	HappyFlag    bool
+	ContinueFlag bool
+	ResumeFlag   bool
+	YoloFlag     bool
+	// UI state
+	ShowingMCPSelection bool
+	FlagCursor          int
 }
 
 func NewModel(mcpFiles []string, happy bool) Model {
@@ -45,6 +53,14 @@ func NewModel(mcpFiles []string, happy bool) Model {
 		MCPFiles:    mcpFiles,
 		MultiSelect: len(mcpFiles) > 1,
 		Happy:       happy,
+		// Initialize flags to false by default
+		HappyFlag:    false,
+		ContinueFlag: false,
+		ResumeFlag:   false,
+		YoloFlag:     false,
+		// Start with showing MCP selection
+		ShowingMCPSelection: true,
+		FlagCursor:          0,
 	}
 }
 
@@ -60,40 +76,132 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Quitted = true
 			return m, tea.Quit
 
+		case "tab":
+			// Toggle between flag selection and MCP selection
+			m.ShowingMCPSelection = !m.ShowingMCPSelection
+			if m.ShowingMCPSelection {
+				m.Cursor = 0
+			} else {
+				m.FlagCursor = 0
+			}
+
 		case "up", "k":
-			if m.Cursor > 0 {
-				m.Cursor--
+			if m.ShowingMCPSelection {
+				if m.Cursor > 0 {
+					m.Cursor--
+				}
+			} else {
+				if m.FlagCursor > 0 {
+					m.FlagCursor--
+				}
 			}
 
 		case "down", "j":
-			if m.Cursor < len(m.Choices)-1 {
-				m.Cursor++
+			if m.ShowingMCPSelection {
+				if m.Cursor < len(m.Choices)-1 {
+					m.Cursor++
+				}
+			} else {
+				if m.FlagCursor < 3 { // 4 flags total (0-3)
+					m.FlagCursor++
+				}
 			}
 
 		case "enter":
 			return m, tea.Quit
 
-		case " ":
+		// Number key shortcuts for MCP server selection
+		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			if m.MultiSelect {
-				if m.Cursor == 0 {
-					// Selecting "No mcp servers" - clear all other selections
-					m.Selected = make(map[int]struct{})
-					m.Selected[0] = struct{}{}
-				} else {
-					// Selecting an MCP server - clear "No mcp servers" first
-					delete(m.Selected, 0)
+				key := msg.String()
+				index := int(key[0] - '0') // Convert string digit to int
 
-					// Toggle the current MCP server selection
-					if _, ok := m.Selected[m.Cursor]; ok {
-						delete(m.Selected, m.Cursor)
-
-						// If no MCP servers selected, re-select "No mcp servers"
-						if len(m.Selected) == 0 {
-							m.Selected[0] = struct{}{}
-						}
+				if index < len(m.Choices) {
+					if index == 0 {
+						// Selecting "No mcp servers" - clear all other selections
+						m.Selected = make(map[int]struct{})
+						m.Selected[0] = struct{}{}
 					} else {
-						m.Selected[m.Cursor] = struct{}{}
+						// Selecting an MCP server - clear "No mcp servers" first
+						delete(m.Selected, 0)
+
+						// Toggle the MCP server selection
+						if _, ok := m.Selected[index]; ok {
+							delete(m.Selected, index)
+
+							// If no MCP servers selected, re-select "No mcp servers"
+							if len(m.Selected) == 0 {
+								m.Selected[0] = struct{}{}
+							}
+						} else {
+							m.Selected[index] = struct{}{}
+						}
 					}
+				}
+			}
+
+		// Letter key shortcuts for flag toggles
+		case "h":
+			m.HappyFlag = !m.HappyFlag
+		case "c":
+			m.ContinueFlag = !m.ContinueFlag
+			// If both continue and resume are selected, resume takes priority
+			if m.ContinueFlag && m.ResumeFlag {
+				m.ResumeFlag = false
+			}
+		case "r":
+			m.ResumeFlag = !m.ResumeFlag
+			// If both continue and resume are selected, resume takes priority
+			if m.ResumeFlag && m.ContinueFlag {
+				m.ContinueFlag = false
+			}
+		case "y":
+			m.YoloFlag = !m.YoloFlag
+
+		case " ":
+			if m.ShowingMCPSelection {
+				// Handle MCP selection
+				if m.MultiSelect {
+					if m.Cursor == 0 {
+						// Selecting "No mcp servers" - clear all other selections
+						m.Selected = make(map[int]struct{})
+						m.Selected[0] = struct{}{}
+					} else {
+						// Selecting an MCP server - clear "No mcp servers" first
+						delete(m.Selected, 0)
+
+						// Toggle the current MCP server selection
+						if _, ok := m.Selected[m.Cursor]; ok {
+							delete(m.Selected, m.Cursor)
+
+							// If no MCP servers selected, re-select "No mcp servers"
+							if len(m.Selected) == 0 {
+								m.Selected[0] = struct{}{}
+							}
+						} else {
+							m.Selected[m.Cursor] = struct{}{}
+						}
+					}
+				}
+			} else {
+				// Handle flag selection
+				switch m.FlagCursor {
+				case 0:
+					m.HappyFlag = !m.HappyFlag
+				case 1:
+					m.ContinueFlag = !m.ContinueFlag
+					// If both continue and resume are selected, resume takes priority
+					if m.ContinueFlag && m.ResumeFlag {
+						m.ContinueFlag = false
+					}
+				case 2:
+					m.ResumeFlag = !m.ResumeFlag
+					// If both continue and resume are selected, resume takes priority
+					if m.ResumeFlag && m.ContinueFlag {
+						m.ContinueFlag = false
+					}
+				case 3:
+					m.YoloFlag = !m.YoloFlag
 				}
 			}
 		}
@@ -116,16 +224,20 @@ func (m Model) View() string {
 	}
 	s.WriteString("\n")
 
-	// Header
-	header := HeaderStyle.Render("🚀 Choose your MCP configuration:")
-	s.WriteString(header + "\n")
+	// MCP section header
+	mcpHeaderStyle := HeaderStyle
+	if m.ShowingMCPSelection {
+		mcpHeaderStyle = mcpHeaderStyle.Foreground(SelectedItemStyle.GetForeground())
+	}
+	mcpHeader := mcpHeaderStyle.Render("🚀 Choose your MCP configuration:")
+	s.WriteString(mcpHeader + "\n")
 
-	// Menu items
+	// MCP menu items
 	for i, choice := range m.Choices {
 		var cursor, checkbox, item string
 
-		// Cursor
-		if m.Cursor == i {
+		// Cursor (only show when in MCP selection mode)
+		if m.ShowingMCPSelection && m.Cursor == i {
 			cursor = CursorStyle.Render("❯")
 		} else {
 			cursor = " "
@@ -138,12 +250,12 @@ func (m Model) View() string {
 			checkbox = CheckboxUnselectedStyle.Render("⬡")
 		}
 
-		// Item styling
-		if m.Cursor == i {
+		// Item styling with number shortcut
+		if m.ShowingMCPSelection && m.Cursor == i {
 			// Special handling for different choice types
 			if i == 0 {
 				// "No mcp servers" option
-				item = SelectedItemStyle.Render("🚫 " + choice)
+				item = SelectedItemStyle.Render("🚫 " + choice + " [" + fmt.Sprintf("%d", i) + "]")
 			} else {
 				// Parse choice to separate name and location
 				parts := strings.Split(choice, " (")
@@ -153,14 +265,16 @@ func (m Model) View() string {
 					location = " (" + parts[1]
 				}
 
-				styledName := SelectedItemStyle.Render(name)
+				// Add number shortcut to the name
+				nameWithShortcut := name + " [" + fmt.Sprintf("%d", i) + "]"
+				styledName := SelectedItemStyle.Render(nameWithShortcut)
 				styledLocation := LocationStyle.Render(location)
 				item = styledName + styledLocation
 			}
 		} else {
 			// Unselected item
 			if i == 0 {
-				item = UnselectedItemStyle.Render("🚫 " + choice)
+				item = UnselectedItemStyle.Render("🚫 " + choice + " [" + fmt.Sprintf("%d", i) + "]")
 			} else {
 				parts := strings.Split(choice, " (")
 				name := parts[0]
@@ -169,7 +283,9 @@ func (m Model) View() string {
 					location = " (" + parts[1]
 				}
 
-				styledName := UnselectedItemStyle.Render(name)
+				// Add number shortcut to the name
+				nameWithShortcut := name + " [" + fmt.Sprintf("%d", i) + "]"
+				styledName := UnselectedItemStyle.Render(nameWithShortcut)
 				styledLocation := LocationStyle.Render(location)
 				item = styledName + styledLocation
 			}
@@ -178,12 +294,62 @@ func (m Model) View() string {
 		s.WriteString(fmt.Sprintf(" %s %s %s\n", cursor, checkbox, item))
 	}
 
+	s.WriteString("\n")
+
+	// Flags section
+	flagHeaderStyle := HeaderStyle
+	if !m.ShowingMCPSelection {
+		flagHeaderStyle = flagHeaderStyle.Foreground(SelectedItemStyle.GetForeground())
+	}
+	flagHeader := flagHeaderStyle.Render("⚙️ Configuration Flags:")
+	s.WriteString(flagHeader + "\n")
+
+	// Flag choices
+	flagChoices := []struct {
+		name     string
+		label    string
+		value    bool
+		shortcut string
+	}{
+		{"happy", "🦦 Use happy [h]", m.HappyFlag, "h"},
+		{"continue", "🔄 Continue previous session [c]", m.ContinueFlag, "c"},
+		{"resume", "📂 Resume previous session [r]", m.ResumeFlag, "r"},
+		{"yolo", "⚠️ Skip permissions check [y]", m.YoloFlag, "y"},
+	}
+
+	for i, flag := range flagChoices {
+		var cursor, checkbox, item string
+
+		// Cursor (only show when in flag selection mode)
+		if !m.ShowingMCPSelection && m.FlagCursor == i {
+			cursor = CursorStyle.Render("❯")
+		} else {
+			cursor = " "
+		}
+
+		// Checkbox
+		if flag.value {
+			checkbox = CheckboxSelectedStyle.Render("⬢")
+		} else {
+			checkbox = CheckboxUnselectedStyle.Render("⬡")
+		}
+
+		// Item styling
+		if !m.ShowingMCPSelection && m.FlagCursor == i {
+			item = SelectedItemStyle.Render(flag.label)
+		} else {
+			item = UnselectedItemStyle.Render(flag.label)
+		}
+
+		s.WriteString(fmt.Sprintf(" %s %s %s\n", cursor, checkbox, item))
+	}
+
 	// Help text
 	helpText := "💡 Controls: "
 	if m.MultiSelect {
-		helpText += "↑/↓ navigate • space select • enter launch • q quit"
+		helpText += "tab switch sections • ↑/↓ navigate • space select • enter launch • q quit"
 	} else {
-		helpText += "↑/↓ navigate • enter launch • q quit"
+		helpText += "tab switch sections • ↑/↓ navigate • enter launch • q quit"
 	}
 
 	help := HelpStyle.Render(helpText)
