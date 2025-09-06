@@ -48,8 +48,12 @@ func main() {
 	// Set debug mode in config package
 	config.SetDebugMode(debugFlag)
 
-	// If blank flag is set, launch Claude Code without MCP servers immediately
-	if blankFlag {
+	// Check if any flags were provided
+	anyFlagProvided := debugFlag || localFlag || yoloFlag || happyFlag || resumeFlag || continueFlag || blankFlag
+	
+	// If any flag is provided, bypass TUI and launch directly with defaults
+	if anyFlagProvided {
+		// Apply default values: blank=true (skip TUI), all others keep their parsed values (defaulting to false)
 		err := launcher.LaunchClaudeCodeWithoutMCP(yoloFlag, happyFlag, resumeFlag, continueFlag)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error launching Claude Code: "+err.Error()))
