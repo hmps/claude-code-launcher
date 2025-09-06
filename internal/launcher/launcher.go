@@ -58,10 +58,11 @@ func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, h
 		args = append(args, "--continue")
 	}
 
-	// If "No mcp servers" is selected
-	if _, noMcpSelected := selected[0]; noMcpSelected {
-		// args already contains yolo flag if needed, no need to add anything else
-	} else {
+	// Always add --strict-mcp-config to ensure only specified MCP servers are used
+	args = append(args, "--strict-mcp-config")
+
+	// If "No mcp servers" is selected, only add --strict-mcp-config (no --mcp-config)
+	if _, noMcpSelected := selected[0]; !noMcpSelected {
 		args = append(args, "--mcp-config")
 
 		// Add all selected MCP files
@@ -123,6 +124,9 @@ func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool, resume bool, continueFlag
 	if continueFlag {
 		args = append(args, "--continue")
 	}
+
+	// Always add --strict-mcp-config to ensure no MCP servers are loaded
+	args = append(args, "--strict-mcp-config")
 
 	// Use syscall.Exec to replace current process with Claude Code
 	return syscall.Exec(executablePath, args, os.Environ())
