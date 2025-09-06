@@ -11,15 +11,37 @@ import (
 )
 
 // LaunchClaudeCode launches Claude Code with the specified MCP configuration files
-func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool) error {
-	// Find the full path to claude executable
-	claudePath, err := exec.LookPath("claude")
-	if err != nil {
-		return fmt.Errorf("claude executable not found: %w", err)
+func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, happy bool) error {
+	var executablePath, executableName string
+	
+	// Check if happy flag is set and happy is available
+	if happy {
+		happyPath, err := exec.LookPath("happy")
+		if err != nil {
+			// Happy not found, show warning and fall back to claude
+			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Warning: 'happy' command not found in PATH. Falling back to 'claude'."))
+			claudePath, err := exec.LookPath("claude")
+			if err != nil {
+				return fmt.Errorf("claude executable not found: %w", err)
+			}
+			executablePath = claudePath
+			executableName = "claude"
+		} else {
+			executablePath = happyPath
+			executableName = "happy"
+		}
+	} else {
+		// Find the full path to claude executable
+		claudePath, err := exec.LookPath("claude")
+		if err != nil {
+			return fmt.Errorf("claude executable not found: %w", err)
+		}
+		executablePath = claudePath
+		executableName = "claude"
 	}
 
 	// Build arguments array
-	args := []string{"claude"}
+	args := []string{executableName}
 
 	// Add --dangerously-skip-permissions if yolo flag is set
 	if yolo {
@@ -41,19 +63,41 @@ func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool) e
 	}
 
 	// Use syscall.Exec to replace current process with Claude Code
-	return syscall.Exec(claudePath, args, os.Environ())
+	return syscall.Exec(executablePath, args, os.Environ())
 }
 
 // LaunchClaudeCodeWithoutMCP launches Claude Code without any MCP servers
-func LaunchClaudeCodeWithoutMCP(yolo bool) error {
-	// Find the full path to claude executable
-	claudePath, err := exec.LookPath("claude")
-	if err != nil {
-		return fmt.Errorf("claude executable not found: %w", err)
+func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool) error {
+	var executablePath, executableName string
+	
+	// Check if happy flag is set and happy is available
+	if happy {
+		happyPath, err := exec.LookPath("happy")
+		if err != nil {
+			// Happy not found, show warning and fall back to claude
+			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Warning: 'happy' command not found in PATH. Falling back to 'claude'."))
+			claudePath, err := exec.LookPath("claude")
+			if err != nil {
+				return fmt.Errorf("claude executable not found: %w", err)
+			}
+			executablePath = claudePath
+			executableName = "claude"
+		} else {
+			executablePath = happyPath
+			executableName = "happy"
+		}
+	} else {
+		// Find the full path to claude executable
+		claudePath, err := exec.LookPath("claude")
+		if err != nil {
+			return fmt.Errorf("claude executable not found: %w", err)
+		}
+		executablePath = claudePath
+		executableName = "claude"
 	}
 
 	// Build arguments array
-	args := []string{"claude"}
+	args := []string{executableName}
 
 	// Add --dangerously-skip-permissions if yolo flag is set
 	if yolo {
@@ -61,12 +105,20 @@ func LaunchClaudeCodeWithoutMCP(yolo bool) error {
 	}
 
 	// Use syscall.Exec to replace current process with Claude Code
-	return syscall.Exec(claudePath, args, os.Environ())
+	return syscall.Exec(executablePath, args, os.Environ())
 }
 
 // ShowNoMCPMessage displays a styled message when no MCP files are found
-func ShowNoMCPMessage() {
+func ShowNoMCPMessage(happy bool) {
 	title := ui.CreateGradientText("⚡ Claude Code Launcher", ui.PurpleGradientStart, ui.PurpleGradientEnd)
+	fmt.Println(title)
+
+	// Show confirmation if happy flag is set
+	if happy {
+		happyStyle := lipgloss.NewStyle().Foreground(ui.MutedColor)
+		fmt.Println(happyStyle.Render("🎉 Happy mode enabled - will use 'happy' command instead of 'claude'"))
+	}
+	fmt.Println()
 	noMcpStyle := lipgloss.NewStyle().
 		Foreground(ui.MutedColor).
 		Italic(true).
@@ -76,8 +128,6 @@ func ShowNoMCPMessage() {
 
 	launchMsg := ui.CreateGradientText("🚀 Launching Claude Code without MCP servers...", ui.PurpleGradientStart, ui.PurpleGradientEnd)
 
-	fmt.Println(title)
-	fmt.Println()
 	fmt.Println(noMcpStyle.Render("📁 No MCP configuration files found in .claude/mcp/ or ~/.claude/mcp/"))
 	fmt.Println()
 	fmt.Println(launchMsg)
@@ -85,8 +135,13 @@ func ShowNoMCPMessage() {
 }
 
 // ShowLaunchMessage displays a styled message when launching Claude Code
-func ShowLaunchMessage() {
-	launchMsg := ui.CreateGradientText("🚀 Launching Claude Code...", ui.PurpleGradientStart, ui.PurpleGradientEnd)
+func ShowLaunchMessage(happy bool) {
+	var launchMsg string
+	if happy {
+		launchMsg = ui.CreateGradientText("🚀 Launching Claude Code (with happy)...", ui.PurpleGradientStart, ui.PurpleGradientEnd)
+	} else {
+		launchMsg = ui.CreateGradientText("🚀 Launching Claude Code...", ui.PurpleGradientStart, ui.PurpleGradientEnd)
+	}
 	fmt.Println()
 	fmt.Println(launchMsg)
 	fmt.Println()

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Model struct {
@@ -15,9 +16,10 @@ type Model struct {
 	MCPFiles    []string
 	MultiSelect bool
 	Quitted     bool
+	Happy       bool
 }
 
-func NewModel(mcpFiles []string) Model {
+func NewModel(mcpFiles []string, happy bool) Model {
 	choices := []string{"No mcp servers"}
 
 	for _, file := range mcpFiles {
@@ -42,6 +44,7 @@ func NewModel(mcpFiles []string) Model {
 		Selected:    selected,
 		MCPFiles:    mcpFiles,
 		MultiSelect: len(mcpFiles) > 1,
+		Happy:       happy,
 	}
 }
 
@@ -104,7 +107,14 @@ func (m Model) View() string {
 
 	// Title with gradient
 	title := CreateGradientText("⚡ Claude Code Launcher", PurpleGradientStart, PurpleGradientEnd)
-	s.WriteString(title + "\n\n")
+	s.WriteString(title + "\n")
+
+	// Show confirmation if happy flag is set
+	if m.Happy {
+		happyStyle := lipgloss.NewStyle().Foreground(MutedColor)
+		s.WriteString(happyStyle.Render("🦦 Happy mode enabled") + "\n")
+	}
+	s.WriteString("\n")
 
 	// Header
 	header := HeaderStyle.Render("🚀 Choose your MCP configuration:")
