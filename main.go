@@ -19,6 +19,7 @@ func main() {
 	var happyFlag bool
 	var resumeFlag bool
 	var continueFlag bool
+	var blankFlag bool
 	flag.BoolVar(&debugFlag, "debug", false, "Enable debug logging")
 	flag.BoolVar(&localFlag, "local", false, "Only check for local MCP configurations, skip global ones")
 	flag.BoolVar(&yoloFlag, "yolo", false, "Launch Claude Code with --dangerously-skip-permissions")
@@ -27,10 +28,13 @@ func main() {
 	flag.BoolVar(&resumeFlag, "resume", false, "Launch Claude Code with --resume flag (-r, --resume)")
 	flag.BoolVar(&continueFlag, "c", false, "Launch Claude Code with --continue flag (-c, --continue)")
 	flag.BoolVar(&continueFlag, "continue", false, "Launch Claude Code with --continue flag (-c, --continue)")
+	flag.BoolVar(&blankFlag, "b", false, "Launch Claude Code without MCP servers (skip TUI) (-b, --blank)")
+	flag.BoolVar(&blankFlag, "blank", false, "Launch Claude Code without MCP servers (skip TUI) (-b, --blank)")
 	
-	// Custom usage function to show double dashes for all flags except -r and -c
+	// Custom usage function to show double dashes for all flags except -r, -c, and -b
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "  -b, --blank\n        Launch Claude Code without MCP servers (skip TUI)\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  -c, --continue\n        Launch Claude Code with --continue flag\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --debug\n        Enable debug logging\n")
 		fmt.Fprintf(flag.CommandLine.Output(), "  --happy\n        Use happy instead of claude command\n")
@@ -43,6 +47,16 @@ func main() {
 
 	// Set debug mode in config package
 	config.SetDebugMode(debugFlag)
+
+	// If blank flag is set, launch Claude Code without MCP servers immediately
+	if blankFlag {
+		err := launcher.LaunchClaudeCodeWithoutMCP(yoloFlag, happyFlag, resumeFlag, continueFlag)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", ui.RenderError("Error launching Claude Code: "+err.Error()))
+			os.Exit(1)
+		}
+		return
+	}
 
 	// Find MCP files
 	mcpFiles, err := config.FindMCPFiles(localFlag)
