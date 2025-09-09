@@ -11,7 +11,7 @@ import (
 )
 
 // LaunchClaudeCode launches Claude Code with the specified MCP configuration files
-func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, happy bool, resume bool, continueFlag bool) error {
+func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, happy bool, resume bool, continueFlag bool, zai bool) error {
 	var executablePath, executableName string
 	
 	// Check if happy flag is set and happy is available
@@ -73,12 +73,22 @@ func LaunchClaudeCode(selected map[int]struct{}, mcpFiles []string, yolo bool, h
 		}
 	}
 
+	// Prepare environment variables
+	env := os.Environ()
+	if zai {
+		zaiAPIKey := os.Getenv("Z_AI_API_KEY")
+		if zaiAPIKey != "" {
+			env = append(env, "ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic")
+			env = append(env, "ANTHROPIC_AUTH_TOKEN="+zaiAPIKey)
+		}
+	}
+
 	// Use syscall.Exec to replace current process with Claude Code
-	return syscall.Exec(executablePath, args, os.Environ())
+	return syscall.Exec(executablePath, args, env)
 }
 
 // LaunchClaudeCodeWithoutMCP launches Claude Code without any MCP servers
-func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool, resume bool, continueFlag bool) error {
+func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool, resume bool, continueFlag bool, zai bool) error {
 	var executablePath, executableName string
 	
 	// Check if happy flag is set and happy is available
@@ -128,8 +138,18 @@ func LaunchClaudeCodeWithoutMCP(yolo bool, happy bool, resume bool, continueFlag
 	// Always add --strict-mcp-config to ensure no MCP servers are loaded
 	args = append(args, "--strict-mcp-config")
 
+	// Prepare environment variables
+	env := os.Environ()
+	if zai {
+		zaiAPIKey := os.Getenv("Z_AI_API_KEY")
+		if zaiAPIKey != "" {
+			env = append(env, "ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic")
+			env = append(env, "ANTHROPIC_AUTH_TOKEN="+zaiAPIKey)
+		}
+	}
+
 	// Use syscall.Exec to replace current process with Claude Code
-	return syscall.Exec(executablePath, args, os.Environ())
+	return syscall.Exec(executablePath, args, env)
 }
 
 // ShowNoMCPMessage displays a styled message when no MCP files are found

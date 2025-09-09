@@ -22,16 +22,19 @@ type Model struct {
 	ContinueFlag bool
 	ResumeFlag   bool
 	YoloFlag     bool
+	ZaiFlag      bool
 	// UI state
 	ShowingMCPSelection bool
 	FlagCursor          int
+	// z.ai availability
+	ZaiAvailable bool
 }
 
 func NewModel(mcpFiles []string, happy bool) Model {
-	return NewModelWithDefaults(mcpFiles, happy, false, false, false, false)
+	return NewModelWithDefaults(mcpFiles, happy, false, false, false, false, false, false)
 }
 
-func NewModelWithDefaults(mcpFiles []string, happy bool, yoloFlag bool, continueFlag bool, resumeFlag bool, blankFlag bool) Model {
+func NewModelWithDefaults(mcpFiles []string, happy bool, yoloFlag bool, continueFlag bool, resumeFlag bool, blankFlag bool, zaiFlag bool, zaiAvailable bool) Model {
 	choices := []string{"No mcp servers"}
 
 	for _, file := range mcpFiles {
@@ -68,10 +71,24 @@ func NewModelWithDefaults(mcpFiles []string, happy bool, yoloFlag bool, continue
 		ContinueFlag: continueFlag,
 		ResumeFlag:   resumeFlag,
 		YoloFlag:     yoloFlag,
+		ZaiFlag:      zaiFlag,
 		// Start with showing MCP selection
 		ShowingMCPSelection: true,
 		FlagCursor:          0,
+		// z.ai availability
+		ZaiAvailable: zaiAvailable,
 	}
+}
+
+// getMaxFlagCursor returns the maximum flag cursor index based on available flags
+func (m Model) getMaxFlagCursor() int {
+	// Base flags: happy, continue, resume, yolo (0-3)
+	maxCursor := 3
+	// Add z.ai if available
+	if m.ZaiAvailable {
+		maxCursor++
+	}
+	return maxCursor
 }
 
 func (m Model) Init() tea.Cmd {
@@ -102,7 +119,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					// At first item in MCP section, move to last item in config section
 					m.ShowingMCPSelection = false
-					m.FlagCursor = 3 // Last flag (yolo)
+					m.FlagCursor = m.getMaxFlagCursor()
 				}
 			} else {
 				if m.FlagCursor > 0 {
@@ -124,7 +141,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.FlagCursor = 0
 				}
 			} else {
-				if m.FlagCursor < 3 { // 4 flags total (0-3)
+				if m.FlagCursor < m.getMaxFlagCursor() {
 					m.FlagCursor++
 				} else {
 					// At last item in config section, move to first item in MCP section
@@ -183,6 +200,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "y":
 			m.YoloFlag = !m.YoloFlag
+		case "z":
+			if m.ZaiAvailable {
+				m.ZaiFlag = !m.ZaiFlag
+			}
 
 		case " ":
 			if m.ShowingMCPSelection {
@@ -228,6 +249,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				case 3:
 					m.YoloFlag = !m.YoloFlag
+				case 4:
+					if m.ZaiAvailable {
+						m.ZaiFlag = !m.ZaiFlag
+					}
 				}
 			}
 		}
@@ -330,17 +355,26 @@ func (m Model) View() string {
 	flagHeader := flagHeaderStyle.Render("⚙️ Configuration Flags:")
 	s.WriteString(flagHeader + "\n")
 
-	// Flag choices
-	flagChoices := []struct {
+	// Flag choices - build dynamically based on availability
+	type flagChoice struct {
 		name     string
 		label    string
 		value    bool
 		shortcut string
-	}{
+	}
+	
+	flagChoices := []flagChoice{
 		{"happy", "🦦 Use happy [h]", m.HappyFlag, "h"},
 		{"continue", "🔄 Continue previous session [c]", m.ContinueFlag, "c"},
 		{"resume", "📂 Resume previous session [r]", m.ResumeFlag, "r"},
 		{"yolo", "⚠️ Skip permissions check [y]", m.YoloFlag, "y"},
+	}
+	
+	// Add z.ai flag if available
+	if m.ZaiAvailable {
+		flagChoices = append(flagChoices, flagChoice{
+			"zai", "⚡ Use z.ai coding plan [z]", m.ZaiFlag, "z",
+		})
 	}
 
 	for i, flag := range flagChoices {
